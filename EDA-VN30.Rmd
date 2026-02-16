@@ -1,0 +1,536 @@
+---
+title: "EDA<br>Stock Prices & Volume VN30 Index Vietnam"
+
+author: "**Pham_Dinh_Bao_Khoi** (Étudiant)<br>khoipdb.23bi14230@usth.edu.vn"
+date: "`r Sys.Date()`"
+output: 
+  rmdformats::readthedown:
+    highlight: espresso
+    code_download: TRUE
+    code_folding: show
+    number_sections: TRUE
+    dev: "svg"
+editor_options: 
+  markdown: 
+    wrap: sentence
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.dim = c(8, 6), fig.align = "center", out.width = "100%")
+```
+
+```{r klippy, echo=FALSE, include=TRUE}
+klippy::klippy(c('r', 'python', 'json', 'linux'), position = c('top', 'right'),
+               tooltip_message = 'Click to copy', tooltip_success = 'Copied')
+```
+
+------------------------------------------------------------------------
+# libraries
+
+```{r}
+# install.packages(c("tidyverse", "lubridate", "zoo", "quantmod","PerformanceAnalytics", "corrplot", "plotly","gridExtra", "scales", "TTR", "tseries"))
+
+
+
+library(tidyverse)      # Data manipulation and visualization
+library(lubridate)      # Date handling
+library(zoo)            # TradingDate series
+library(quantmod)       # Financial analysis
+library(PerformanceAnalytics)  # Financial performance metrics
+library(corrplot)       # Correlation plots
+library(plotly)         # Interactive plots
+library(gridExtra)      # Multiple plots
+library(scales)         # Scale functions for visualization
+library(TTR)            # Technical trading rules
+library(tseries)  
+
+```
+
+```{r}
+# list.files("ASTD/stock_price_VN30/") <--   CHANGE PATH TO FILE
+
+library(readr)
+
+list_of_files <- list.files(path = "/home/palm/ASTD/stock_price_VN30/",
+                             recursive = TRUE,
+                             pattern = "//.csv$",
+                             full.names = TRUE)
+dta <- readr::read_csv(list_of_files)
+
+```
+
+```{r}
+# Set working directory
+# Set working directory
+setwd("/home/palm/ASTD/stock_price_VN30")
+
+# Get list of all CSV files
+csv_files <- list.files(pattern = "*.csv")
+
+# Load all files into a list
+stock_list <- lapply(csv_files, function(file) {
+  df <- read.csv(file, stringsAsFactors = FALSE)
+  df$Company <- tools::file_path_sans_ext(file)  # Add company name
+  return(df)
+})
+
+# Combine all stocks into one dataframe
+all_stocks <- bind_rows(stock_list)
+
+# View the structure
+str(all_stocks)
+head(all_stocks)
+
+```
+```{r}
+# Example: Load one stock for detailed analysis
+stock_sample <- read.csv("/home/palm/ASTD/stock_price_VN30/MSN.csv")
+
+head(stock_sample)
+
+
+```
+
+
+```{r}
+# Dimensions
+dim(all_stocks)
+dim(stock_sample)
+
+# Column names
+colnames(all_stocks)
+
+# Data types
+str(all_stocks)
+
+# First and last rows
+head(all_stocks, 10)
+tail(all_stocks, 10)
+
+# Summary statistics
+summary(all_stocks)
+
+# Unique companies
+unique(all_stocks$Company)
+length(unique(all_stocks$Company))
+
+
+```
+
+```{r}
+# Missing values per column
+colSums(is.na(all_stocks))
+
+# Percentage of missing values
+missing_pct <- colMeans(is.na(all_stocks)) * 100
+print(missing_pct) # it show blank figure
+
+# Visualize missing values
+library(naniar)
+vis_miss(all_stocks)
+
+# Missing values by company
+all_stocks %>%
+  group_by(Company) %>%
+  summarise(
+    total_rows = n(),
+    missing_close = sum(is.na(Close)),
+    missing_volume = sum(is.na(Volume))
+  )
+
+```
+## Check for Duplicates
+however, we can easily see that, there are no uplicated values
+this dataset so CLEAN !!
+
+```{r}
+# Check for duplicate rows
+duplicates <- all_stocks %>%
+  group_by(Company, TradingDate) %>%
+  filter(n() > 1)
+
+nrow(duplicates)
+
+# Remove duplicates if any
+all_stocks <- all_stocks %>%
+  distinct(Company, TradingDate, .keep_all = TRUE)
+```
+
+# Data Cleaning and Preprocessing
+
+## Cleaning missing values
+```{r}
+all_stocks <- all_stocks %>%
+  select(where(~ !all(is.na(.))))
+
+```
+
+
+
+## DAte conversion
+```{r}
+# Convert Date column to Date type
+all_stocks$TradingDate <- dmy(all_stocks$TradingDate)
+
+# Sort by company and date
+all_stocks <- all_stocks %>%
+  arrange(Company, TradingDate)
+
+# Check date range
+range(all_stocks$TradingDate, na.rm = TRUE)
+```
+
+## Create Additional Features
+
+explain how this section works, why it's necessary
+
+```{r}
+# Daily returns (percentage change)
+all_stocks <- all_stocks %>%
+  group_by(Company) %>%
+  arrange(TradingDate) %>%
+  mutate(
+    Daily_Return = (Close - lag(Close)) / lag(Close) * 100,
+    Log_Return = log(Close / lag(Close)),
+    Price_Change = Close - lag(Close),
+    Volume_Change = Volume - lag(Volume),
+    High_Low_Range = High - Low,
+    High_Low_Pct = (High - Low) / Low * 100
+  ) %>%
+  ungroup()
+
+# Moving averages
+all_stocks <- all_stocks %>%
+  group_by(Company) %>%
+  arrange(TradingDate) %>%
+  mutate(
+    MA_7 = rollmean(Close, k = 7, fill = NA, align = "right"),
+    MA_30 = rollmean(Close, k = 30, fill = NA, align = "right"),
+    MA_90 = rollmean(Close, k = 90, fill = NA, align = "right")
+  ) %>%
+  ungroup()
+
+# Volatility (rolling standard deviation)
+all_stocks <- all_stocks %>%
+  group_by(Company) %>%
+  arrange(TradingDate) %>%
+  mutate(
+    Volatility_30 = rollapply(Daily_Return, width = 30, 
+                               FUN = sd, fill = NA, align = "right")
+  ) %>%
+  ungroup()
+
+# Time-based features
+all_stocks <- all_stocks %>%
+  mutate(
+    Year = year(TradingDate),
+    Month = month(TradingDate, label = TRUE),
+    Quarter = quarter(TradingDate),
+    DayOfWeek = wday(TradingDate, label = TRUE),
+    WeekOfYear = week(TradingDate)
+  )
+
+```
+
+# Univariate Analysis
+
+## Distribution of Closing Prices
+Closing price in what time? Is this an avg of all time?
+
+From this box plot, what is the insight? what information we can understand from these figures?
+
+The Density plot is too wide/ small, how to make it more clearly?
+
+Showing Distribution of 1 company for instance.
+
+```{r}
+# Histogram
+ggplot(all_stocks, aes(x = Close)) +
+  geom_histogram(bins = 50, fill = "steelblue", color = "black") +
+  facet_wrap(~Company, scales = "free") +
+  labs(title = "Distribution of Closing Prices by Company",
+       x = "Closing Price", y = "Frequency") +
+  theme_minimal()
+
+# Density plot
+ggplot(all_stocks, aes(x = Close, fill = Company)) +
+  geom_density(alpha = 0.5) +
+  labs(title = "Density Plot of Closing Prices",
+       x = "Closing Price", y = "Density") +
+  theme_minimal()
+
+# Box plot
+ggplot(all_stocks, aes(x = Company, y = Close, fill = Company)) +
+  geom_boxplot() +
+  labs(title = "Box Plot of Closing Prices by Company",
+       x = "Company", y = "Closing Price") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none")
+
+```
+
+## Volume distribution
+```{r}
+
+ggplot(all_stocks, aes(x = Volume)) +
+  geom_histogram(bins = 50, fill = "coral", color = "black") +
+  facet_wrap(~Company, scales = "free") +
+  labs(title = "Distribution of Trading Volume by Company",
+       x = "Volume", y = "Frequency") +
+  theme_minimal()
+
+# Average volume by company
+avg_volume <- all_stocks %>%
+  group_by(Company) %>%
+  summarise(Avg_Volume = mean(Volume, na.rm = TRUE)) %>%
+  arrange(desc(Avg_Volume))
+
+ggplot(avg_volume, aes(x = reorder(Company, Avg_Volume), y = Avg_Volume, fill = Company)) +
+  geom_col() +
+  coord_flip() +
+  labs(title = "Average Trading Volume by Company",
+       x = "Company", y = "Average Volume") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+## daily return stats
+```{r}
+# Histogram of returns
+ggplot(all_stocks %>% filter(!is.na(Daily_Return)), 
+       aes(x = Daily_Return)) +
+  geom_histogram(bins = 100, fill = "darkgreen", color = "black") +
+  labs(title = "Distribution of Daily Returns",
+       x = "Daily Return (%)", y = "Frequency") +
+  theme_minimal()
+
+# QQ plot to check normality
+qqnorm(all_stocks$Daily_Return[!is.na(all_stocks$Daily_Return)])
+qqline(all_stocks$Daily_Return[!is.na(all_stocks$Daily_Return)], col = "red")
+
+# Statistical tests for normality
+shapiro.test(sample(all_stocks$Daily_Return[!is.na(all_stocks$Daily_Return)], 5000))
+```
+
+
+
+
+## summary statistic
+```{r}
+# Comprehensive summary by company
+summary_stats <- all_stocks %>%
+  group_by(Company) %>%
+  summarise(
+    N_Days = n(),
+    Min_Price = min(Close, na.rm = TRUE),
+    Max_Price = max(Close, na.rm = TRUE),
+    Mean_Price = mean(Close, na.rm = TRUE),
+    Median_Price = median(Close, na.rm = TRUE),
+    SD_Price = sd(Close, na.rm = TRUE),
+    CV_Price = sd(Close, na.rm = TRUE) / mean(Close, na.rm = TRUE),
+    Mean_Volume = mean(Volume, na.rm = TRUE),
+    Mean_Return = mean(Daily_Return, na.rm = TRUE),
+    SD_Return = sd(Daily_Return, na.rm = TRUE),
+    Min_Return = min(Daily_Return, na.rm = TRUE),
+    Max_Return = max(Daily_Return, na.rm = TRUE)
+  )
+
+print(summary_stats)
+
+# Export summary
+write.csv(summary_stats, "summary_statistics.csv", row.names = FALSE)
+```
+That's stats information, but what's the meaning of those number?
+
+
+this is too colorful!! Instead, showing highest, lowest, the most fluctuated, most increased/decreased. Or what happended in 2018-2019
+
+```{r}
+# Calculate moving averages for stock_sample first
+stock_sample <- stock_sample %>%
+  arrange(TradingDate) %>%
+  mutate(
+    MA_7 = rollmean(Close, k = 7, fill = NA, align = "right"),
+    MA_30 = rollmean(Close, k = 30, fill = NA, align = "right"),
+    MA_90 = rollmean(Close, k = 90, fill = NA, align = "right")
+  )
+
+```
+
+
+# TSA 
+
+## Prices trends over time
+
+```{r}
+# All stocks price movement
+ggplot(all_stocks, aes(x = TradingDate, y = Close, color = Company)) +
+  geom_line(alpha = 0.7) +
+  labs(title = "Stock Price Trends - All Companies",
+       x = "TradingDate", y = "Closing Price") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+# Individual stock with moving averages
+stock_sample %>%
+  ggplot(aes(x = TradingDate)) +
+  geom_line(aes(y = Close, color = "Actual Price")) +
+  geom_line(aes(y = MA_7, color = "MA 7")) +
+  geom_line(aes(y = MA_30, color = "MA 30")) +
+  geom_line(aes(y = MA_90, color = "MA 90")) +
+  labs(title = "Stock Price with Moving Averages",
+       x = "TradingDate", y = "Price", color = "Legend") +
+  theme_minimal()
+
+# Faceted time series
+ggplot(all_stocks, aes(x = TradingDate, y = Close)) +
+  geom_line(color = "steelblue") +
+  facet_wrap(~Company, scales = "free_y", ncol = 5) +
+  labs(title = "Individual Stock Price Trends",
+       x = "TradingDate", y = "Closing Price") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+## Volume trends
+
+```{r}
+# Volume over time
+ggplot(all_stocks, aes(x = TradingDate, y = Volume)) +
+  geom_line(color = "coral") +
+  facet_wrap(~Company, scales = "free_y", ncol = 5) +
+  labs(title = "Trading Volume Trends by Company",
+       x = "Trading Date", y = "Volume") +
+  theme_minimal()
+
+# Price vs Volume
+ggplot(all_stocks, aes(x = TradingDate)) +
+  geom_line(aes(y = Close, color = "Price")) +
+  geom_bar(aes(y = Volume / max(Volume, na.rm = TRUE) * max(Close, na.rm = TRUE)), 
+           stat = "identity", alpha = 0.3, fill = "gray") +
+  facet_wrap(~Company, scales = "free_y", ncol = 3) +
+  labs(title = "Price and Volume Trends",
+       x = "Trading Date", y = "Value") +
+  theme_minimal()
+
+
+
+```
+## seasonality analytics
+
+```{r}
+# Monthly average returns
+monthly_returns <- all_stocks %>%
+  group_by(Company, Month) %>%
+  summarise(Avg_Return = mean(Daily_Return, na.rm = TRUE), .groups = "drop")
+
+ggplot(monthly_returns, aes(x = Month, y = Avg_Return, fill = Company)) +
+  geom_col(position = "dodge") +
+  labs(title = "Average Returns by Month",
+       x = "Month", y = "Average Daily Return (%)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Day of week effect
+dow_returns <- all_stocks %>%
+  group_by(DayOfWeek) %>%
+  summarise(Avg_Return = mean(Daily_Return, na.rm = TRUE),
+            Median_Return = median(Daily_Return, na.rm = TRUE))
+
+ggplot(dow_returns, aes(x = DayOfWeek, y = Avg_Return)) +
+  geom_col(fill = "steelblue") +
+  labs(title = "Average Returns by Day of Week",
+       x = "Day of Week", y = "Average Return (%)") +
+  theme_minimal()
+
+# Yearly performance
+yearly_perf <- all_stocks %>%
+  group_by(Company, Year) %>%
+  summarise(
+    Yearly_Return = (last(Close) - first(Close)) / first(Close) * 100,
+    .groups = "drop"
+  )
+
+ggplot(yearly_perf, aes(x = Year, y = Yearly_Return, color = Company, group = Company)) +
+  geom_line(size = 1) +
+  geom_point(size = 2) +
+  labs(title = "Yearly Returns by Company",
+       x = "Year", y = "Yearly Return (%)") +
+  theme_minimal()
+
+
+```
+## violatillity 
+
+```{r}
+
+# Rolling volatility
+ggplot(all_stocks %>% filter(!is.na(Volatility_30)), 
+       aes(x = TradingDate, y = Volatility_30, color = Company)) +
+  geom_line(alpha = 0.7) +
+  labs(title = "30-Day Rolling Volatility",
+       x = "Trading Date", y = "Volatility (%)") +
+  theme_minimal()
+
+# Volatility ranking
+vol_ranking <- all_stocks %>%
+  group_by(Company) %>%
+  summarise(Avg_Volatility = mean(Volatility_30, na.rm = TRUE)) %>%
+  arrange(desc(Avg_Volatility))
+
+ggplot(vol_ranking, aes(x = reorder(Company, Avg_Volatility), 
+                        y = Avg_Volatility, fill = Company)) +
+  geom_col() +
+  coord_flip() +
+  labs(title = "Average Volatility by Company",
+       x = "Company", y = "Average 30-Day Volatility (%)") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+#   Multivariate Analysis
+
+## Correlation Analysis
+```{r}
+# Select one stock for correlation analysis
+stock_numeric <- stock_sample %>%
+  select(Open, High, Low, Close, Volume) %>%
+  na.omit()
+
+# Correlation matrix
+cor_matrix <- cor(stock_numeric)
+print(cor_matrix)
+
+# Correlation plot
+corrplot(cor_matrix, method = "color", type = "upper", 
+         addCoef.col = "black", tl.col = "black", tl.srt = 45,
+         title = "Correlation Matrix of Stock Variables")
+
+# Pairwise scatter plots
+pairs(stock_numeric[, 1:5], pch = 19, col = rgb(0, 0, 1, 0.3),
+      main = "Pairwise Relationships")
+```
+## Price Correlation Between Stocks
+
+```{r}
+
+# Create wide format for closing prices
+price_wide <- all_stocks %>%
+  select(TradingDate, Company, Close) %>%
+  pivot_wider(names_from = Company, values_from = Close)
+
+# Calculate correlation
+price_cor <- cor(price_wide[, -1], use = "pairwise.complete.obs")
+
+# Correlation heatmap
+corrplot(price_cor, method = "color", type = "upper",
+         tl.col = "black", tl.srt = 45, tl.cex = 0.7,
+         title = "Correlation Between Stock Prices")
+
+# Find highly correlated pairs
+highly_correlated <- which(abs(price_cor) > 0.8 & price_cor != 1, arr.ind = TRUE)
+```
+
+**CONCLUSION FOR THIS SECTION**
+It is hard to analyze this figure because the differences in 'type' of company. Some of it is Banking, Fintech, real estate investment, F&B , etc...
+Therefore, it is meaningless to show the correlation 
+

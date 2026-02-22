@@ -14,19 +14,6 @@ ref:
 Def: Univariate Analysis is a type of data visualization where we visualize only a single variable at a time. Univariate Analysis helps us to analyze the distribution of the variable present in the data so that we can perform further analysis  
 
 
-# trading volume 
-
-* ref: https://www.investopedia.com/ask/answers/041015/why-trading-volume-important-investors.asp
-* ref: DOI:10.1002/9781119204800
-* A stock rising on heavy trading volume tells a different story than one climbing on light volume
-* Heavy volume often shows strong belief in a price move, while light volume can mean uncertainty. This relationship between price and volume helps investors validate trends and spot potential reversals.
-* Trading volume indicates market participation and can confirm trends or signal potential reversals.
-* Rising prices with increasing volume often suggest a strong uptrend, while rising prices with declining volume may indicate a weakening trend.
-* Volume spikes can precede major price moves and indicate shifts in market sentiment.
-* Volume-weighted average price (VWAP) helps traders find optimal buying or selling opportunities based on market activity.
-  
-
-
 
 
 
@@ -38,6 +25,19 @@ Def: A time series is a data set that tracks a sample over time. It's often used
 
 More def: A time series is crucial for tracking data points like a security's price over a specific time and at regular intervals. By using time series analysis, investors gain insights into the factors that influence trends over time, whether in the short-term movement of a stock or the long-term shifts in economic indicators. This comprehensive analysis helps investors and analysts understand how assets or economic variables change and correlate with other factors over time.
 
+
+## trading volume 
+
+* ref: https://www.investopedia.com/ask/answers/041015/why-trading-volume-important-investors.asp
+* ref: DOI:10.1002/9781119204800
+* A stock rising on heavy trading volume tells a different story than one climbing on light volume
+* Heavy volume often shows strong belief in a price move, while light volume can mean uncertainty. This relationship between price and volume helps investors validate trends and spot potential reversals.
+* Trading volume indicates market participation and can confirm trends or signal potential reversals.
+* Rising prices with increasing volume often suggest a strong uptrend, while rising prices with declining volume may indicate a weakening trend.
+* Volume spikes can precede major price moves and indicate shifts in market sentiment.
+* Volume-weighted average price (VWAP) helps traders find optimal buying or selling opportunities based on market activity.
+
+  
 ## stock price trends
 * gemini:
 Moving into Time Series Analysis (TSA) is the natural next step! In financial data science, observing the trajectory of closing prices over time allows us to identify long-term trends, market cycles, and structural breaks.

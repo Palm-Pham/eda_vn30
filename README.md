@@ -28,17 +28,17 @@ Def: A time series is a data set that tracks a sample over time. It's often used
 
 More def: A time series is crucial for tracking data points like a security's price over a specific time and at regular intervals. By using time series analysis, investors gain insights into the factors that influence trends over time, whether in the short-term movement of a stock or the long-term shifts in economic indicators. This comprehensive analysis helps investors and analysts understand how assets or economic variables change and correlate with other factors over time.
 
-
+## stock price trends
 * gemini:
 Moving into Time Series Analysis (TSA) is the natural next step! In financial data science, observing the trajectory of closing prices over time allows us to identify long-term trends, market cycles, and structural breaks.
 
 Since stock prices can have vastly different absolute values (e.g., one company's stock might trade at 15,000 VND while another trades at 120,000 VND), plotting them all on a single Y-axis can squash the lower-priced stocks into a flat line.
 
- creates two versions of the Price Trend plot:
+* creates two versions of the Price Trend plot:
 
-An overlaid line chart: Great for seeing general market synchronicity.
+  An overlaid line chart: Great for seeing general market synchronicity.
 
-A faceted line chart: The best approach when price ranges vary wildly, as it gives each stock its own independent Y-axis.
+  A faceted line chart: The best approach when price ranges vary wildly, as it gives each stock its own independent Y-axis.
 
 <img width="1152" height="768" alt="image" src="https://github.com/user-attachments/assets/504f57fd-0313-4cb2-be49-578fa2712cea" />
 

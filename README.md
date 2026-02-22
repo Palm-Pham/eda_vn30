@@ -7,8 +7,9 @@ in EDA-part2, it will show all the companmies
 # Univariate analysis
 ref: 
 
-  https://blog.tomorrowmarketers.org/phan-tich-don-bien-univariate-analysis/
-  https://www.geeksforgeeks.org/data-visualization/what-is-univariate-bivariate-multivariate-analysis-in-data-visualisation/
+  vietnamese: https://blog.tomorrowmarketers.org/phan-tich-don-bien-univariate-analysis/  
+  
+  english:  https://www.geeksforgeeks.org/data-visualization/what-is-univariate-bivariate-multivariate-analysis-in-data-visualisation/
 
 Def: Univariate Analysis is a type of data visualization where we visualize only a single variable at a time. Univariate Analysis helps us to analyze the distribution of the variable present in the data so that we can perform further analysis  
 

@@ -1,7 +1,7 @@
 # eda_vn30
 just visualization and some analyse
 
-using Claud code
+using Claud code and Gemini also, maybe Chat GPT too
 
 ref dataset: https://www.kaggle.com/datasets/thangtranquang/stock-vn30-vietnam
 

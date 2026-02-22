@@ -167,6 +167,11 @@ all_stocks <- all_stocks %>%
 ```
 
 ## DAte conversion
+
+```{r}
+format(Sys.time())
+```
+
 ```{r}
 # Convert Date column to Date type
 all_stocks$TradingDate <- dmy(all_stocks$TradingDate)
@@ -178,6 +183,9 @@ all_stocks <- all_stocks %>%
 # Check date range
 range(all_stocks$TradingDate, na.rm = TRUE)
 ```
+
+
+
 
 ## Create Additional Features
 
@@ -326,29 +334,49 @@ ggplot(top5_data, aes(x = reorder(Company, Close, FUN = median),
 
 
 ## Volume distribution
-```{r}
 
-ggplot(all_stocks, aes(x = Volume)) +
-  geom_histogram(bins = 50, fill = "coral", color = "black") +
-  facet_wrap(~Company, scales = "free") +
-  labs(title = "Distribution of Trading Volume by Company",
-       x = "Volume", y = "Frequency") +
-  theme_minimal()
 
-# Average volume by company
-avg_volume <- all_stocks %>%
+```{r volume-distribution, fig.width=12, fig.height=6}
+# 1. Filter out the VN30 index and find the REAL top 5 companies by volume
+top5_vol_companies <- all_stocks %>%
+  filter(Company != "VN30") %>% # Exclude the market index
   group_by(Company) %>%
   summarise(Avg_Volume = mean(Volume, na.rm = TRUE)) %>%
-  arrange(desc(Avg_Volume))
+  arrange(desc(Avg_Volume)) %>%
+  slice_head(n = 5) %>%
+  pull(Company)
 
-ggplot(avg_volume, aes(x = reorder(Company, Avg_Volume), y = Avg_Volume, fill = Company)) +
-  geom_col() +
-  coord_flip() +
-  labs(title = "Average Trading Volume by Company",
-       x = "Company", y = "Average Volume") +
+# Print the updated top 5 to the console
+cat("Updated Top 5 Companies by Volume (Excluding Index):\n")
+print(top5_vol_companies)
+
+# 2. Filter for top 5 AND restrict volume to zoom in on the bulk of the data
+top5_vol_data <- all_stocks %>%
+  filter(Company %in% top5_vol_companies) %>%
+  filter(Volume <= 40000000) # Truncate the extreme right-tail outliers
+
+# 3. Plot the zoomed-in Volume Distribution
+ggplot(top5_vol_data, aes(x = Volume, fill = Company)) +
+  geom_histogram(bins = 50, color = "black", alpha = 0.7) +
+  facet_wrap(~Company, scales = "free_y", ncol = 3) + 
+  scale_x_continuous(
+    labels = scales::comma,
+    breaks = seq(0, 40000000, by = 10000000) # Create clean breaks every 10M
+  ) + 
+  labs(
+    title = "Trading Volume Distribution: Top 5 VN30 Companies",
+    subtitle = "Excludes VN30 Index | Zoomed to trading days with <= 40M shares",
+    x = "Trading Volume (Shares)",
+    y = "Frequency (Days)"
+  ) +
   theme_minimal() +
-  theme(legend.position = "none")
+  theme(
+    legend.position = "none",
+    strip.text = element_text(face = "bold", size = 12),
+    axis.text.x = element_text(angle = 45, hjust = 1) # Tilts text to prevent overlap
+  )
 ```
+
 
 ## summary statistic
 ```{r}
@@ -380,8 +408,15 @@ That's stats information, but what's the meaning of those number?
 
 this is too colorful!! Instead, showing highest, lowest, the most fluctuated, most increased/decreased. Or what happended in 2018-2019
 
+
+
+
+# TSA 
+top 5 only
+
+## Calculate moving averages for stock_sample first
 ```{r}
-# Calculate moving averages for stock_sample first
+
 stock_sample <- stock_sample %>%
   arrange(TradingDate) %>%
   mutate(
@@ -393,8 +428,69 @@ stock_sample <- stock_sample %>%
 ```
 
 
-# TSA 
-top 5 only
+## stock price trends
+```{r tsa-price-trends, fig.width=12, fig.height=8}
+library(ggplot2)
+library(dplyr)
+library(scales)
+
+# 1. Ensure we have the top 5 companies (excluding VN30 index)
+top5_companies <- all_stocks %>%
+  filter(Company != "VN30") %>%
+  group_by(Company) %>%
+  summarise(Avg_Volume = mean(Volume, na.rm = TRUE)) %>%
+  arrange(desc(Avg_Volume)) %>%
+  slice_head(n = 5) %>%
+  pull(Company)
+
+# Filter the dataset for these top 5 companies
+tsa_data <- all_stocks %>%
+  filter(Company %in% top5_companies) %>%
+  arrange(Company, TradingDate) # Ensure data is sorted by time
+
+# ---------------------------------------------------------
+# Plot 1: Overlaid Line Chart (All on one axis)
+# ---------------------------------------------------------
+p1 <- ggplot(tsa_data, aes(x = TradingDate, y = Close, color = Company)) +
+  geom_line(alpha = 0.8, linewidth = 0.8) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(
+    title = "Price Trends Over Time (Overlaid)",
+    subtitle = "Closing Prices of the Top 5 Most Liquid VN30 Companies",
+    x = "Trading Date",
+    y = "Closing Price (VND)",
+    color = "Ticker"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",
+    plot.title = element_text(face = "bold", size = 14)
+  )
+
+print(p1)
+
+# ---------------------------------------------------------
+# Plot 2: Faceted Line Chart (Independent Y-axes)
+# ---------------------------------------------------------
+p2 <- ggplot(tsa_data, aes(x = TradingDate, y = Close, color = Company)) +
+  geom_line(alpha = 0.9, linewidth = 0.7) +
+  facet_wrap(~Company, scales = "free_y", ncol = 2) + # free_y allows independent axes
+  scale_y_continuous(labels = scales::comma) +
+  labs(
+    title = "Price Trends Over Time (Faceted)",
+    subtitle = "Independent price scales reveal individual volatility and trends better",
+    x = "Trading Date",
+    y = "Closing Price (VND)"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "none", # Hide legend since facets are labeled
+    strip.text = element_text(face = "bold", size = 12),
+    plot.title = element_text(face = "bold", size = 14)
+  )
+
+print(p2)
+```
 
 #   Multivariate Analysis
 

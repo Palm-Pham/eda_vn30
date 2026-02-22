@@ -1,5 +1,7 @@
 # note for this **rmd** branch only
 
+in EDA file, it only plot top 5
+in EDA-part2, it will show all the companmies
 
 # TSA - only show top 5 companies 
 

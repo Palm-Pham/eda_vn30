@@ -492,6 +492,158 @@ p2 <- ggplot(tsa_data, aes(x = TradingDate, y = Close, color = Company)) +
 print(p2)
 ```
 
+## Volume trends
+```{r tsa-volume-trends, fig.width=12, fig.height=8, warning=FALSE}
+library(ggplot2)
+library(dplyr)
+library(scales)
+
+# 1. Identify the top 5 companies by volume (excluding VN30 index)
+top5_vol_companies <- all_stocks %>%
+  filter(Company != "VN30") %>%
+  group_by(Company) %>%
+  summarise(Avg_Volume = mean(Volume, na.rm = TRUE)) %>%
+  arrange(desc(Avg_Volume)) %>%
+  slice_head(n = 5) %>%
+  pull(Company)
+
+# 2. Filter data and ensure strict chronological order
+tsa_vol_data <- all_stocks %>%
+  filter(Company %in% top5_vol_companies) %>%
+  arrange(Company, TradingDate)
+
+# 3. Plot Volume Trends using Area Charts
+ggplot(tsa_vol_data, aes(x = TradingDate, y = Volume, fill = Company)) +
+  geom_area(alpha = 0.7, color = "black", linewidth = 0.2) + 
+  facet_wrap(~Company, scales = "free_y", ncol = 2) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(
+    title = "Trading Volume Trends Over Time",
+    subtitle = "Daily volume for the Top 5 most liquid VN30 companies",
+    x = "Trading Date",
+    y = "Trading Volume (Shares)"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    strip.text = element_text(face = "bold", size = 12),
+    plot.title = element_text(face = "bold", size = 14),
+    axis.text.x = element_text(angle = 45, hjust = 1) # Tilt dates for readability
+  )
+```
+
+## Seasonality and Yearly Performance (Top 5 Companies)
+
+Avg of all time in this specific dataset
+
+```{r tsa-seasonality, fig.width=14, fig.height=10, warning=FALSE, message=FALSE}
+library(ggplot2)
+library(dplyr)
+library(scales)
+library(gridExtra) # To arrange multiple plots
+
+# 1. Identify the Top 5 companies by average volume (Excluding VN30)
+top5_companies <- all_stocks %>%
+  filter(Company != "VN30") %>%
+  group_by(Company) %>%
+  summarise(Avg_Volume = mean(Volume, na.rm = TRUE)) %>%
+  arrange(desc(Avg_Volume)) %>%
+  slice_head(n = 5) %>%
+  pull(Company)
+
+# Filter dataset for seasonality analysis
+tsa_season_data <- all_stocks %>%
+  filter(Company %in% top5_companies) %>%
+  filter(!is.na(Close))
+
+# ---------------------------------------------------------
+# Plot 1: Average Price by Month
+# ---------------------------------------------------------
+monthly_avg <- tsa_season_data %>%
+  group_by(Company, Month) %>%
+  summarise(Avg_Price = mean(Close, na.rm = TRUE), .groups = "drop")
+
+p_month <- ggplot(monthly_avg, aes(x = Month, y = Avg_Price, group = Company, color = Company)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2.5) +
+  facet_wrap(~Company, scales = "free_y", ncol = 5) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(
+    title = "Average Price by Month",
+    subtitle = "Identifying seasonal monthly trends",
+    x = "Month",
+    y = "Avg Closing Price"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(face = "bold")
+  )
+
+# ---------------------------------------------------------
+# Plot 2: Average Price by Day of Week
+# ---------------------------------------------------------
+dow_avg <- tsa_season_data %>%
+  group_by(Company, DayOfWeek) %>%
+  summarise(Avg_Price = mean(Close, na.rm = TRUE), .groups = "drop")
+
+p_dow <- ggplot(dow_avg, aes(x = DayOfWeek, y = Avg_Price, fill = Company)) +
+  geom_col(color = "black", alpha = 0.8) +
+  facet_wrap(~Company, scales = "free_y", ncol = 5) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(
+    title = "Average Price by Day of Week",
+    subtitle = "Checking for start/end of week effects",
+    x = "Day of Week",
+    y = "Avg Closing Price"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(face = "bold")
+  )
+
+# ---------------------------------------------------------
+# Plot 3: Yearly Price Change (%) by Company
+# ---------------------------------------------------------
+# Calculate the percentage change from the first trading day to the last trading day of each year
+yearly_change <- tsa_season_data %>%
+  group_by(Company, Year) %>%
+  arrange(TradingDate) %>%
+  summarise(
+    Start_Price = first(Close),
+    End_Price = last(Close),
+    .groups = "drop"
+  ) %>%
+  mutate(Pct_Change = ((End_Price - Start_Price) / Start_Price) * 100)
+
+p_year <- ggplot(yearly_change, aes(x = factor(Year), y = Pct_Change, fill = Pct_Change > 0)) +
+  geom_col(color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("TRUE" = "steelblue", "FALSE" = "coral")) + # Blue for positive, Red for negative
+  facet_wrap(~Company, ncol = 5) +
+  labs(
+    title = "Yearly Price Change (%)",
+    subtitle = "Annual percentage return by company",
+    x = "Year",
+    y = "Percentage Change (%)"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(face = "bold")
+  )
+
+# ---------------------------------------------------------
+# Display all 3 plots stacked vertically
+# ---------------------------------------------------------
+grid.arrange(p_month, p_dow, p_year, ncol = 1)
+```
+
+
+
 #   Multivariate Analysis
 
 ## Correlation Analysis
@@ -514,6 +666,10 @@ corrplot(cor_matrix, method = "color", type = "upper",
 pairs(stock_numeric[, 1:5], pch = 19, col = rgb(0, 0, 1, 0.3),
       main = "Pairwise Relationships")
 ```
+
+
+
+
 ## Price Correlation Between Stocks
 
 ```{r}

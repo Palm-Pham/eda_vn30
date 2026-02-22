@@ -12,3 +12,10 @@ To handle this, I will provide you with code that creates two versions of the Pr
 An overlaid line chart: Great for seeing general market synchronicity.
 
 A faceted line chart: The best approach when price ranges vary wildly, as it gives each stock its own independent Y-axis.
+
+<img width="1152" height="768" alt="image" src="https://github.com/user-attachments/assets/504f57fd-0313-4cb2-be49-578fa2712cea" />
+
+
+<img width="1152" height="768" alt="image" src="https://github.com/user-attachments/assets/3445e8ac-feb7-4ef5-bf86-bd15ace01912" />
+
+

@@ -377,6 +377,15 @@ ggplot(top5_vol_data, aes(x = Volume, fill = Company)) +
   )
 ```
 
+Should we add more visualization? like display fully the volume then analyze the 20/80 ?
+
+Or only plot the Shares <= 10 Mil VND
+
+Does the heavy/ light volume (share) impact on the companies ?
+
+Insight? 
+
+
 
 ## summary statistic
 ```{r}
@@ -536,7 +545,7 @@ ggplot(tsa_vol_data, aes(x = TradingDate, y = Volume, fill = Company)) +
 
 Avg of all time in this specific dataset
 
-```{r tsa-seasonality, fig.width=14, fig.height=10, warning=FALSE, message=FALSE}
+```{r tsa-seasonality, fig.width=21, fig.height=10, warning=FALSE, message=FALSE}
 library(ggplot2)
 library(dplyr)
 library(scales)
